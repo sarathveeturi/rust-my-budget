@@ -6,6 +6,11 @@ use futures::future;
 use std::env;
 use tokio::sync::Mutex;
 use std::time::Duration;
+use google_storage_rs::objects::{InsertObjectOptional, InsertObjectRequest};
+use google_storage_rs::GoogleStorage;
+use hyper::StatusCode;
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[macro_use]
 extern crate lazy_static;
@@ -26,13 +31,33 @@ lazy_static! {
 }
 
 //constants
+const BUCKET_NAME: &str = "finances-file-storage"; // Replace with your actual bucket name
 const OK_RESPONSE: &str =
     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n";
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
 
 async fn main() {
-    //let result = set_database().await;
+    // Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
+    let keyfile_path = "./env_variables/eminent-quasar-414921-61c629db8190.json";
+
+    
+    // Initialize the Google Storage client with service account credentials
+    let storage = GoogleStorage::from_service_account_key(&GCS_CREDENTIALS)
+        .expect("Failed to initialize Google Storage client");
+
+    // Call handle_file_upload with the initialized storage client
+    let result = handle_file_upload(&storage, &some_request_body).await;
+
+
+    // Check if the key file exists before setting the environment variable
+    if std::fs::metadata(keyfile_path).is_ok() {
+        env::set_var("GOOGLE_APPLICATION_CREDENTIALS", keyfile_path);
+    } else {
+        eprintln!("Error: Service account key file not found at {}", keyfile_path);
+        std::process::exit(1);
+    }
+
     if let Err(err) = result {
         eprintln!("Error setting database: {}", err);
     }
@@ -106,6 +131,41 @@ async fn handle_client(mut stream: TcpStream) {
         Err(e) => eprintln!("Unable to read stream: {}", e),
     }
 }
+
+
+async fn handle_file_upload(
+    storage: &GoogleStorage,
+    request_body: &[u8],
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Read the content of the file from the request body
+    let file_content: Vec<u8> = Vec::from(request_body);
+
+    // Generate a unique object name (you can customize this logic)
+    let object_name = format!("file_{}", chrono::Utc::now().timestamp());
+
+    // Create an InsertObjectRequest
+    let insert_request = InsertObjectRequest {
+        bucket: BUCKET_NAME.to_string(),
+        name: object_name,
+        data: Some(file_content),
+        ..Default::default()
+    };
+
+    // Insert the object into the Google Cloud Storage bucket
+    let _ = storage
+        .objects()
+        .insert(
+            &insert_request,
+            &InsertObjectOptional {
+                // You can customize optional parameters if needed
+                ..Default::default()
+            },
+        )
+        .await?;
+
+    Ok(())
+}
+
 
 //handle post request
 fn handle_post_request(request: &str) -> (String, String) {
