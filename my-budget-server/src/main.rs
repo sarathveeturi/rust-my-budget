@@ -28,7 +28,7 @@ lazy_static! {
 }
 
 //constants
-const BUCKET_NAME: &str = "finances-file-storage"; // Replace with your actual bucket name
+const BUCKET_NAME: &str = "BUCKET_NAME_HERE"; // Replace with your actual bucket name
 const OK_RESPONSE: &str =
     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE\r\nAccess-Control-Allow-Headers: Content-Type\r\n\r\n";
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";

@@ -3,17 +3,24 @@ A personal budget and finance application used for managing and visualizing mont
 
 # Pre-requisites
 * Docker - To run the app
-* Postman - To test the API
+* google-cloud-storage-bucket
+* Google cloud configuration key file 
 
-# Instructions to run 
+# Instructions to setup
+- Once you've the google cloud configuration key file, create a directory in `my-budget-server/env_variables`
+- Paste the JSON file inside the newly created `env_variables` directory
+- Create a storage bucket on google cloud
+- Copy the name of the bucket and paste it in `src/main.rs` line 31 and replace the name of your bucket with "BUCKET_NAME_HERE" 
+
+# Instruction to run
+
 - Backend rust application has been containerized using Docker. To run the app and spin up the postgres DB, run the following command 
 from root i.e. `rust-my-budget`
 
 `docker compose up`
 
-- Once the server starts, open postman
-- In the request type select POST and type the url "http://localhost:8080/api/rust/users"
-- In the text pane below, enter a username and email id and click `Send`
-- Receive response with status code 200 and the newly added details.
+- Once the servers spin up and start accepting requests, go to `cd my-budget-ui` directory and run 
+`npm run dev`
 
-###### Note - This testing of backend API end points through postman is just a way to test the server. A front-end based on react is under construction which will let us test this API directly from the UI.
+- This starts the front-end UI on localhost which can send user's details and let's users upload a pdf/excel file into the google cloud
+bucket.
