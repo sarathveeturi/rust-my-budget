@@ -24,3 +24,7 @@ from root i.e. `rust-my-budget`
 
 - This starts the front-end UI on localhost which can send user's details and let's users upload a pdf/excel file into the google cloud
 bucket.
+
+![Sample UI](my-budget-ui\src\assets\cloudstorage.png)
+
+![File in the Google Storage Bucket](my-budget-ui\src\assets\UI.png)
