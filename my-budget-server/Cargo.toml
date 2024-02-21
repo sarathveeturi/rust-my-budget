@@ -13,4 +13,6 @@ serde_derive = "1.0"
 tokio = { version = "1", features = ["full"] }
 lazy_static = "1.4.0"
 futures = "0.3"
-google-storage-rs = "0.21.0"
+google-cloud-storage = "0.14.0"
+hyper = "0.14.9"
+chrono = "0.4.19"
