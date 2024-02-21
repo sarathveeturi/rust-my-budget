@@ -2,15 +2,12 @@ use postgres::{ Client, NoTls };
 use serde_derive::{Deserialize, Serialize};
 use tokio::net::{ TcpListener, TcpStream };
 use tokio::io::{AsyncReadExt, AsyncWriteExt };
-use futures::future;
 use std::env;
 use tokio::sync::Mutex;
-use std::time::Duration;
-use google_storage_rs::objects::{InsertObjectOptional, InsertObjectRequest};
-use google_storage_rs::GoogleStorage;
-use hyper::StatusCode;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use google_cloud_storage::client::Client as StorageClient;
+use google_cloud_storage::client::ClientConfig;
+use google_cloud_storage::{Object, InsertObjectRequest, InsertObjectOptional};
+
 
 #[macro_use]
 extern crate lazy_static;
@@ -37,24 +34,32 @@ const OK_RESPONSE: &str =
 const NOT_FOUND: &str = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
 const INTERNAL_ERROR: &str = "HTTP/1.1 500 INTERNAL ERROR\r\n\r\n";
 
-async fn main() {
+fn main() {
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
     // Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
-    let keyfile_path = "./env_variables/eminent-quasar-414921-61c629db8190.json";
+    static GCS_CREDENTIALS: &str = "./env_variables/eminent-quasar-414921-61c629db8190.json";
+
+    // Check if the key file exists before setting the environment variable
+    if std::fs::metadata(GCS_CREDENTIALS).is_ok() {
+        env::set_var("GOOGLE_APPLICATION_CREDENTIALS", GCS_CREDENTIALS);
+    } else {
+        eprintln!("Error: Service account key file not found at {}", GCS_CREDENTIALS);
+        std::process::exit(1);
+    }
 
     
     // Initialize the Google Storage client with service account credentials
-    let storage = GoogleStorage::from_service_account_key(&GCS_CREDENTIALS)
-        .expect("Failed to initialize Google Storage client");
+    let storage = StorageClient::new(ClientConfig::default());
 
     // Call handle_file_upload with the initialized storage client
-    let result = handle_file_upload(&storage, &some_request_body).await;
+    let result = handle_file_upload(&storage, b"File uploaded!").await;
 
 
     // Check if the key file exists before setting the environment variable
-    if std::fs::metadata(keyfile_path).is_ok() {
-        env::set_var("GOOGLE_APPLICATION_CREDENTIALS", keyfile_path);
+    if std::fs::metadata(GCS_CREDENTIALS).is_ok() {
+        env::set_var("GOOGLE_APPLICATION_CREDENTIALS", GCS_CREDENTIALS);
     } else {
-        eprintln!("Error: Service account key file not found at {}", keyfile_path);
+        eprintln!("Error: Service account key file not found at {}", GCS_CREDENTIALS);
         std::process::exit(1);
     }
 
@@ -79,9 +84,10 @@ async fn main() {
     }
 
 }
+)}
 
 //db setup
-fn set_database() -> Result<(), Box<dyn std::error::Error>> {
+async fn set_database() -> Result<(), Box<dyn std::error::Error>> {
         let mut client = CLIENT.lock().await;
         client.batch_execute(
             "
@@ -134,7 +140,7 @@ async fn handle_client(mut stream: TcpStream) {
 
 
 async fn handle_file_upload(
-    storage: &GoogleStorage,
+    storage: &StorageClient,
     request_body: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Read the content of the file from the request body
@@ -153,15 +159,14 @@ async fn handle_file_upload(
 
     // Insert the object into the Google Cloud Storage bucket
     let _ = storage
-        .objects()
-        .insert(
-            &insert_request,
-            &InsertObjectOptional {
-                // You can customize optional parameters if needed
-                ..Default::default()
-            },
-        )
-        .await?;
+    .list_objects()
+    .insert(
+        &insert_request,
+        &InsertObjectOptional {
+            ..Default::default()
+        },
+    )
+    .await?;
 
     Ok(())
 }
